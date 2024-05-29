@@ -1,0 +1,58 @@
+---
+- name: Playbook for installing NGINX and uploading a test page on port 8080
+  hosts: all
+  become: yes
+  vars:
+    nginx_listen_port: 8080
+
+  tasks:
+    - name: Ensure NGINX is installed
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Ensure NGINX is started and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Deploy custom NGINX config from template
+      template:
+        src: ~/staging/nginx.conf.j2
+        dest: /etc/nginx/sites-available/default
+      tags:
+        - nginx-configuration
+
+    - name: Create index.html for test page
+      copy:
+        dest: /var/www/html/index.html
+        content: |
+          <html>
+          <head>
+            <title>Welcome to NGINX on port 8080!</title>
+          </head>
+          <body>
+            <h1>Success! The NGINX server is working on port 8080!</h1>
+          </body>
+          </html>
+
+    - name: Ensure the firewall allows HTTP traffic on port 8080
+      ufw:
+        rule: allow
+        port: '8080'
+        proto: tcp
+        state: enabled
+
+    - name: Ensure the firewall allows SSH traffic on port 22
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+        state: enabled
+
+    - name: Restart NGINX to apply changes
+      service:
+        name: nginx
+        state: restarted
